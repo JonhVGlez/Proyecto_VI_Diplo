@@ -1,48 +1,50 @@
 ---
-title: "tarea 1 modulo VI"
-author: "Jonathan Vargas"
-date: "2025-08-03"
-output: html_document
+title: 'Tarea 1: Módulo VI APRENDIZAJE NO SUPERVISADO'
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(root.dir = "../..")
 ```
 
-**TAREA 1. MÓDULO VI APRENDIZAJE NO SUPERVISADO**
 
-Integrantes.
+**Integrantes:**
 
-Luis Rodrigo Santamaría Rodríguez
-Jonathan Vargas González
-Marisol Estrada Téllez
+* Luis Rodrigo Santamaría Rodríguez
+* Jonathan Vargas González
+* Marisol Estrada Téllez
 
-Para la presente tarea se trabajará con la siguiente base da datos llamada water potability.csv 
-la cual contiene mediciones y evaluaciones de la calidad del agua relacionadas con su potabilidad, es decir, la idoneidad para el consumo humano.
-
-Proporciona informacíon sobre los paŕametros de la calidad del agua y ayudar a
+Para la presente tarea se trabajará con la siguiente base da datos llamada *water potability.csv* 
+la cual contiene medidas físico-químicas y evaluaciones de la calidad del agua relacionadas con su potabilidad, es decir, la idoneidad para el consumo humano. Proporciona información sobre los parámetros de la calidad del agua y ayudar a
 determinar si es potable o no. 
 
-Cada renglón representa una muestra de agua con atributos especifícos, y la columna
-"Potability" indica si el agua es o no apta para el consumo humano. 
+Cada renglón representa una muestra de agua con atributos específicos y la columna *Potability* indica si el agua es o no apta para el consumo humano. 
 
-Las variables medias son: 
+Las variables medidas son: 
 
-ph: Nivel de ph
-Dureza (Hardness): Dureza,
-medida del contenido mineral, 
-Śolidos (Solids): Total de sólidos disueltos
-Cloraminas (Chloramines): Concentración de cloraminas,
-Sulfato (Sulfate): Concentración de sulfato,
-Conductividad (Conductivity): Conductividad eléctrica,
-Carbono organico (Organic carbon): Contenido de carbono orǵanico,
-Trihalometanos (Trihalomethanes): Concentracíon de trihalometanos,
-Turbidez (Turbidity): Nivel de turbidez,
-medida de la claridad y 
-Potabilidad (Potability): Indica la potabilidad con valores de 1 (potable) y 0 (no potable)
+- ph: Nivel de ph.
+- Dureza (Hardness): Dureza, medida del contenido mineral. 
+- Sólidos (Solids): Total de sólidos disueltos.
+- Cloraminas (Chloramines): Concentración de cloraminas.
+- Sulfato (Sulfate): Concentración de sulfato.
+- Conductividad (Conductivity): Conductividad eléctrica.
+- Carbono organico (Organic carbon): Contenido de carbono organic,
+- Trihalometanos (Trihalomethanes): Concentración de trihalometano,
+- Turbidez (Turbidity): Nivel de turbidez, medida de la claridad.
+- Potabilidad (Potability): Indica la potabilidad con valores de 1 (potable) y 0 (no potable).
 
-Primero vamos a cargar las librerías que vamos a ocupar.
-```{r}
+El objetivo de esta tarea es usar técnicas de reducción de dimensionalidad para facilitar su análisis, visualización y comprensión. Los métodos seleccionados para este propósito son:
+
+* **PCA** (Análisis de Componentes Principales) 
+* **t-SNE** (t-distributed Stochastic Neighbor Embedding)
+* **UMAP** (Uniform Manifold Approximation and Projection)
+
+**Iniciamos revisando nuestro dataset y haciendo un análisis exploratorio.**
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
 ###Librerias
 library(tidymodels)
 library(tidyverse)
@@ -54,7 +56,7 @@ library(ggplot2)
 library(broom)
 library(Hmisc)
 library(scales)
-#library(autoplot)
+library(autoplot)
 library(recipes)
 library(rgl)
 library(plotly)
@@ -68,67 +70,63 @@ library(ggfortify)
 theme_set(theme_bw(16))
 ```
 
-Cargamos nuestra base de Datos:
-```{r}
+Cargamos nuestra base de datos.
+
+```{r message=FALSE, warning=FALSE}
 # Cargamos la base de datos
-df<-read.csv("C:/Users/Jonat/Downloads/water_potability.csv") 
+df<-read.csv("water_potability.csv")
+df$Potability <- as.factor(df$Potability)
 ```
 
-Veamos la dimensión de nuestra base, la cual tiene 3276 registros y 10 columnas
-```{r}
+Veamos la dimensión de nuestra base, la cual tiene 3276 registros y 10 columnas.
+
+```{r message=FALSE, warning=FALSE}
 df %>% dim()
 ```
 
-Veamos los tipos de datos que tenemos y algunos registros
-```{r}
+Checamos los tipos de datos que tenemos y algunos registros.
+```{r message=FALSE, warning=FALSE}
 df %>% glimpse()
 df %>% head()
 ```
-Podemos observar que tenemos algunos datos faltantes en las columnas de "ph" y "Sulfate", además
-podemos observar que la variable "Potability" es la única variable que es de tipo "int"
 
-Veamos cuántos datos faltantes tenemos por cada columna
-```{r}
+Podemos observar que tenemos algunos datos faltantes de pH Sulfatos, además, la variable "Potability" es la única variable que es de tipo "int".
+
+Revisamos cuántos datos faltantes tenemos por cada columna.
+```{r message=FALSE, warning=FALSE}
 colSums(is.na(df))
-
-df %>% summary()
-
 ```
+
 Observemos que:
 
-Tenemos 491 datos faltantes para la columna "pH"
-Tenemos 781 datos faltantes para la columna "Sulfate"
-Tenemos 162 datos faltantes para la columna "Trihalomethanes"
-Las variables tienen diferentes dimensiones, es decir que toman valores en rangos muy distintos por lo que debemos de estandarizar.
+- Tenemos 491 datos faltantes en pH.
+- Tenemos 781 datos faltantes en Sulfatos.
+- Tenemos 162 datos faltantes en Trihalometanos.
 
-Antes de estandarizar los datos vamos a imputar los datos faltantes con ayuda de la función mice
-```{r}
+
+Imputaremos los datos faltantes con ayuda de la función  `mice` usando el método PMM (Coincidencia de Medias Predictivas).
+
+```{r message=FALSE, warning=FALSE, results="hide"}
 imputed_data <- mice(df, m = 5, method = 'pmm', maxit = 5, seed = 123)
 ```
 
-Veamos que los datos imputados fueron colocados en las variables "ph", "Sulfate" y "Trihalomethanes"
-Con esto ya podemos estandarizar nuestros datos.
-```{r}
-summary(imputed_data)
-```
-
-Vamos a poner en nuestra variable df los datos imputados, para tener nuestro data set completo sin datos faltantes para poder trabajar
-```{r}
+Vamos a poner en nuestra variable df los datos imputados.
+```{r message=FALSE, warning=FALSE}
 df <- complete(imputed_data, 1)
 ```
 
-Comprobemos que ya no tenemos datos faltantes en nuestro dataframe
-```{r}
+Comprobemos que ya no tenemos datos faltantes en nuestro dataframe.
+```{r message=FALSE, warning=FALSE}
 colSums(is.na(df))
 ```
 
-Vamos a hacer un analísis exploratorio de Datos.
+### **Análisis exploratorio de datos**
 
-A continuación creamos una tabla que nos muestra el mínimo, primer cuantil, la mediana, media, tercer quantil y el máximo de cada una de nuestras columnas
+A continuación creamos una tabla que nos muestra el mínimo, primer cuantil, la mediana, media, tercer quantil y el máximo de cada una de nuestras columnas.
 
-```{r}
-num.dat = df %>% select_if(is.numeric)
-num.dat %>% glimpse()
+```{r message=FALSE, warning=FALSE}
+num.dat <- df %>% select_if(is.numeric)
+# num.dat %>% glimpse()
 
 apply(num.dat,2,function(x) round(summary(x),3)) %>% 
    kbl() %>%
@@ -138,312 +136,203 @@ apply(num.dat,2,function(x) round(summary(x),3)) %>%
 ```
 
 
-Vamos a tomar como variable de clasificacion: potability, cabe mencionar que esto lo hacemos solo de referencia ya que, en aprendizaje supervisado no tenemos una variable de salida que nos ayude a categorizar, solo lo haremos para fines ilustrativos
+Tomamos como variable de clasificación: potability, cabe mencionar que esto lo hacemos solo de referencia ya que, en aprendizaje supervisado no tenemos una variable de salida que nos ayude a categorizar, solo lo haremos para fines ilustrativos.
 
-Vamos a contar cuántos registros tienen un valor de 0 y cuantos un valor de 1, es decir, cuantos tipos de agua son adecuados para el consumo humano y cuántos no lo son.
-```{r}
-#df <- df %>% 
- # mutate(Potability = relevel(as.factor(Potability), "0", "1"))
-df  %>% count(Potability)
-table(df$Potability)
-```
-
-Podemos observar que hay 1998 registros que no son aptos para el consumo humano y 1278 registros si son aptos para el consumo humano.
-
-Vamos a realizar una gráfica para que lo veamos de una manera más ilustrativa.
-```{r}
+Revisamos cuántos tipos de agua son adecuados para el consumo humano y cuántos no lo son.
+```{r message=FALSE, warning=FALSE, echo=FALSE}
 df %>%
   group_by(Potability) %>%
   summarise (n = n()) %>%
   mutate(prop = n / sum(n)) %>%
 ggplot(aes(df,x = Potability, y = n)) +
-    geom_col(fill = c("#CC0033", "#e319dc")) +
-    geom_text(aes(label = paste0(n, " | ", signif(n / nrow(df) * 100, digits = 4), '%')), nudge_y = 10) + ggtitle("Porcentajes del agua que es considerada potable y la que no")
-    theme_gray()
-
-df %>%
-  select(where(is.numeric)) %>%
-  colMeans()
-
-df1 <- df |> dplyr::select(where(is.numeric))
+    theme_minimal() +
+    geom_col(fill = c("#ec7d15", "#10b9ec")) +
+    geom_text(aes(label = paste0(n, " | ", signif(n / nrow(df) * 100, digits = 4), '%')), nudge_y = 10) + ggtitle("Porcentajes de agua potable y no potable")
 ```
-Con la gráfica anterior podemos observar que nuestro data set contiene 60.99% de registros los cuales no son aptos para el consumo humano y un 39.01% si lo son.
 
-Vamos a realizar histogramas de cada una de nuestras columnas
-```{r}
-df1 |> pivot_longer(1:ncol(df1), 
- names_to = "Variable", values_to="Score") |>
-   ggplot(aes(x=Score)) + geom_histogram(aes(y = ..density..),bins=20,colour = 3, fill = "darkmagenta") +
-     facet_wrap("Variable",ncol = 4,scales = "free" ) + theme_minimal()
-```
-Como podemos observar nuestra variable "Potability solo tiene 2 valores los cuales son 0 y 1
+Podemos observar que hay 1998 registros que no son aptos para el consumo humano y 1278 registros si son aptos para el consumo humano.
+Además, **60.99% de registros no son aptos para el consumo humano y un 39.01% sí lo son**.
 
-Vamos a realizar unos box plots 
-```{r}
-df1 |> pivot_longer(1:ncol(df1), 
-  values_to="Score",names_to = "Variable") |>
-    ggplot(aes(y=Score)) + geom_boxplot(aes(fill="darkmagenta"),colour = 3,show.legend = FALSE) +
-      facet_wrap("Variable",ncol = 4,scales = "free" ) + theme_minimal()
-```
-Podemos observar que tenemos algunas columnas que tienen registros atipicos, esta es otra razón para estandarizar nuestros datos.
+**Ahora, realizamos histogramas de cada una de nuestras columnas.**
 
-Vamos a realizar una gráfica de densidades de cada una de nuestras columnas
-```{r}
-df1 |> pivot_longer(1:ncol(df1), 
-   names_to = "Variable",values_to="Score") |>
-     ggplot(aes(x=Score)) + geom_density(aes(fill="darkmagenta"),colour = 3,show.legend = FALSE) +
-       facet_wrap("Variable",ncol = 4,scales = "free" ) + theme_minimal()
-```
-Vamos a hacer unas gráficas en las cuáles observemos la correlación que tienen cada una de nuestras variables, las densidades y .....
-
-###Comparacion por la variable de clasificacion o respuesta
-NOTA: No corre debido a que la variable "Potability" no es factor
-```{r}
+**Boxplots:**
+```{r, warning=FALSE, message=FALSE, include=FALSE}
 df_long <- df %>% 
     pivot_longer(!Potability, names_to = "predictores", values_to = "values")
+```
 
-theme_set(theme_light())
-
+```{r, warning=FALSE, message=FALSE, echo = FALSE}
 df_long %>% 
   ggplot(mapping = aes(x = Potability, y = values, fill = as.factor(predictores))) +
-  geom_boxplot(alpha = 0.4) + 
+  geom_boxplot(alpha = 0.4)  + theme_light() + 
   facet_wrap(~ predictores, scales = "free", ncol = 4) +
   scale_color_viridis_d(option = "plasma", end = .7) +
   theme(legend.position = "none") +
   labs(title = "Comparación vía box-plot")
-# Poner analísis
+```
 
-df_long |> ggplot(mapping = aes(values, fill = as.factor(Potability))) +
+
+**Histogramas:**
+
+```{r, echo =FALSE, message = FALSE, warning=FALSE}
+df_long |> ggplot(mapping = aes(values, fill = Potability)) +
   geom_histogram(color = "white", alpha = 0.4) +
+  theme_light() +
+  scale_fill_manual(values = c("0" = "#ec7d15", "1" = "#10b9ec")) + 
   facet_wrap(~predictores, scales = "free", ncol= 4) +
-  scale_color_viridis_d(option = "plasma", end = .7) +
   labs(title = "Variables Distribution") +
-  theme_light()+
   labs(title = "Comparación vía histograma")
 
-df_long |> ggplot(mapping = aes(values, fill = as.factor(Potability))) +
+```
+
+**Densidades:**
+
+```{r, warning=FALSE, message=FALSE, echo =FALSE}
+df_long |> ggplot(mapping = aes(values, fill = Potability)) +
   geom_density(color = "white", alpha = 0.4) +
+  theme_light() +
+  scale_fill_manual(values = c("0" = "#ec7d15", "1" = "#10b9ec")) +
   facet_wrap(~predictores, scales = "free", ncol= 4) +
-  scale_color_viridis_d(option = "plasma", end = .7) +
-  labs(title = "Variables Distribution") +
-  theme_light()+
+  labs(title = "Distribución de variables") +
   labs(title = "Comparación a través de densidad")
-
-
-ggpairs(df, mapping = aes(color = Potability),columns = seq(2,7))
 ```
-Después de hacer un Analísis Exploratorio de nuestro Data Set podemos realizar la 
-Reduccion de dimension utilizando el Método PCA (Componentes Principales)
 
-Vamos a ver la Estructura de correlación que tienen nuestras variables
-```{r}
-library(dplyr)
+**Gráficos de dispersión:**
 
-cor_data <- df %>%
-  select(where(is.numeric)) %>%
-  cor()
-
-cor_data<-cor(df[,-10])
-cor_data
+```{r message=FALSE, warning=FALSE, echo = FALSE}
+ggpairs(df, mapping = aes(color = Potability, alpha = 0.5),columns = seq(1,9), upper = "blank", diag = "blank") +
+scale_colour_manual(values = c("0" = "#ec7d15", "1" = "#10b9ec")) + labs(title = "Comparación por gráficos de dispersión")
 ```
-Podemos observar la matriz de correlación pero de esta manera no podemos ver claramente la correlación que tienen nuestra variables, por lo que calcularemos mejor la correlación de "spearman"
-y vamos a observarla en un mapa de calor
 
-```{r}
+Veamos la estructura de correlación de Spearman que tienen nuestras variables.
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
 cor1_data<-cor(df[,-10],method="spearman")
-
-cor1_data
 
 ggcorrplot::ggcorrplot(corr = cor1_data,
                        type = "lower", 
                        show.diag = TRUE,
                        lab = TRUE, 
-                       lab_size = 3)
-det(cor1_data)
+                       lab_size = 3) +
+                       labs(title = "Correlación entre las variables")
+```
 
+Observamos que **no hay mucha correlación en nuestras variables** por lo que podemos intuir que la **reducción de dimensionalidad no se llevará a cabo con éxito** ya que PCA, hace una reducción de dimensión mientras haya una correlación fuerte entre nuestras variables.
+
+```{r warning = FALSE, message=FALSE}
 psych::KMO(cor1_data)
 ```
-Observamos que no hay mucha correlación en nuestras variables por lo que podemos
-intuir que la reducción de dimensionalidad no se llevará a cabo con éxito ya que PCA, hace una reducción de dimensión mientras haya una correlación fuerte entre nuestras variables.
+Además, tomando en cuenta la medida Kaiser-Meyer-Olkin, las variables no son muy adecuadas para reducir la dimensión por estar debajo de 0.5.
 
 
-```{r}
-###Prueba de Bartlett
-psych::cortest.bartlett(cor1_data,n=dim(df1)[1])
+## **PCA**
+Después de hacer un Análisis Exploratorio de nuestro Dataset podemos realizar la Reducción de dimensión utilizando el Método PCA (Componentes Principales).
 
-#-----------------------------------------------------------------------
-#no corre
-###Todas estas medidas indican que no hay una estructura de asociacion fuerte
-
-#cor.df1 <- df1 %>% cor_mat()
-#cor.df1
-
-#options(scipen=999)
-#format(value, scientific=FALSE)
-#cor.df1 %>% cor_get_pval()
-
-#cor.df1 %>%
- # cor_reorder() %>%
-  #pull_lower_triangle() %>%
-  #cor_plot(label = TRUE)
-
-#cor.df1 %>% cor_gather() %>% print(n=Inf)
-#--------------------------------------------
-```
-
-Vamos a tratar de reducir dimensionalidad con PCA y estandarizamos los datos 
-```{r}
+Estandarizamos los datos y trataremos de reducir dimensionalidad con PCA.
+```{r message=FALSE, warning=FALSE}
 pca_fit <- df %>%
   select(where(is.numeric)) %>%
   scale() %>% #estandarizamos los datos
   prcomp()
-
-#str(pca_fit)
 ```
 
-Veamos el resultado de PCA
-```{r}
-pca_fit
-# Los componentes principales son 9, son pesos de nuestras variables
-```
-```{r}
-(pca_fit$sdev)*(pca_fit$sdev)
-```
+Veamos el resultado de PCA con los 9 eigenvalores:
 
-Observamos que los eigenvalores van decreciendo pero no son cercanos a cero por lo que podemos
-decir que todos los eigenvalores tienen mucha varianza explicada
-
-```{r}
+```{r message=FALSE, warning=FALSE}
 pca_fit %>%
-  tidy("pcs") #%>% print(n=Inf)
+  tidy("pcs")
 ```
 
+Observamos que los eigenvalores van decreciendo pero no son cercanos a cero, por lo que podemos decir que todos los eigenvalores tienen mucha varianza explicada.
 
-```{r}
-pca_fit %>%
-  tidy("d")
 
-pca_fit %>%
-  tidy(matrix="eigenvalues")
-```
+Veamos una gráfica de codo la cual nos muestra como va bajando la varianza explicada por cada una de las Componentes Principales.
 
-Veamos una gráfica de codo la cuál nos muestra como va bajando la varianza explicada por cada una de las Componentes Principales, pero como podemos ver cada una de las componentes tiene casi la misma varianza por lo que podemos intuir que no será posible graficar en R3 ni en R2 ya que si solo nos quedamos con 2 o 3 Componentes Principales perderemos mucha varianza de las demás componentes.
-
-```{r}
+```{r message=FALSE, warning=FALSE, echo=FALSE}
 pca_fit %>%
   tidy("pcs") %>%
-  ggplot(aes(x=PC, y=percent))+
-  geom_col(fill="magenta", alpha=0.7) +
+  ggplot(aes(x=term, y=prop.variance, group = 1)) +
+  geom_col(fill="#b229e9da", alpha=0.7) +
   geom_point(size=2) +
-  geom_line(color="darkred", size=1.1)+
+  geom_line(color="darkred", size=1.1) +
   scale_y_continuous(labels=scales::label_percent(),
                      breaks = scales::breaks_pretty(n=6))+
-  labs(y= "Varianza explicada", title="Scree plot")
+  labs(y= "Varianza explicada", title="Scree plot") +
+  theme_minimal()
 ```
+
+Cada una de las componentes tiene casi la misma varianza por lo que podemos intuir que no será posible graficar en R3 ni en R2 ya que **si solo nos quedamos con 2 o 3 Componentes Principales perderemos mucha varianza de las demás componentes**.
+
 Veamos una gráfica ahora de la Varianza acumulativa.
-```{r}
+```{r message=FALSE, warning=FALSE, echo=FALSE}
 pca_fit %>%
   tidy("pcs") %>%
-  ggplot(aes(x=PC, y=cumulative))+
-  geom_col(fill="#CC0033", alpha=0.7) +
+  ggplot(aes(x=term, y= cum.prop.variance, group = 1))+
+  geom_col(fill="#b229e9da", alpha=0.7) +
   geom_point(size=2) +
-  geom_line(color="darkviolet", size=1.1)+
+  geom_line(color="darkred", size=1.1)+
   scale_y_continuous(labels=scales::label_percent(),
                      breaks = scales::breaks_pretty(n=6))+
   labs(y= "Varianza explicada acumulada",title="Scree plot")
 ```
 
-```{r}
-pca_fit %>%
-  augment(df) %>%
-  print(n=20)
-
+```{r message=FALSE, warning=FALSE, include=FALSE}
 variance_exp <- pca_fit %>%  
   tidy("pcs") %>% 
-  pull(percent)
+  pull(prop.variance)
 ```
 
-Vamos a realizar una Grafica con los dos primeros componentes
-```{r}
-pca_fit %>%
-  augment(df) %>%
-  rename_with(function(x){gsub(".fitted","",x)}) %>%
-  ggplot(aes(x = PC1, y = PC2))+
-  geom_point()+
-  labs(x = paste0("PC1: ",round(variance_exp[1]*100), "%"),
-       y = paste0("PC2: ",round(variance_exp[2]*100), "%"))+
-  labs(title="Gráfica de componentes principales")
-```
-Podemos ver a simple vista que las observaciones se ven muy homogeneas es decir, que no podemos ver alguna separación en grupos.
+Vamos a realizar una gráfica con los dos primeros componentes.
 
-Vamos a hacer uso de nuestra variable "Potability" Podemos ver que no nos separan bien los datos en los grupos que tenemos de potabilidad
-```{r}
+Vamos a hacer uso de nuestra variable *Potability*.
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
 pca_fit %>%
   augment(df) %>%
-  rename_with(function(x){gsub(".fitted","",x)}) %>%
+  rename_with(function(x){gsub("[.]","",x)}) %>%
   ggplot(aes(x = PC1, y = PC2, color=Potability))+
   geom_point()+
+  scale_color_manual(values = c("0" = "#ec7d15", "1" = "#10b9ec")) +
   labs(x = paste0("PC1: ",round(variance_exp[1]*100), "%"),
        y = paste0("PC2: ",round(variance_exp[2]*100), "%"))+
   labs(title="Gráfica de componentes principales")
 ```
 
+Podemos ver que no nos separan bien los datos en los grupos que tenemos de potabilidad.
 
-```{r}
+Gráfica de Boxplot de la variable *Potability* con el primer componente principal.
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
 pca_fit %>%
   augment(df) %>%
-  rename_with(function(x){gsub(".fitted","",x)}) %>%
+  rename_with(function(x){gsub("[.]","",x)}) %>%
   ggplot(aes(x = Potability, y = PC1, color=Potability))+
   geom_boxplot(outlier.shape = NA)+
+  scale_color_manual(values = c("0" = "#ec7d15", "1" = "#10b9ec")) +
   geom_point(position=position_jitterdodge())+
   labs(y = paste0("PC1: ",round(variance_exp[1]*100), "%"))+
   theme(legend.position = "top")
 ```
 
+Gráfica de Boxplot de la variable *Potability* con el segundo componente principal.
 
-```{r}
+```{r message=FALSE, warning=FALSE, echo=FALSE}
 pca_fit %>%
   augment(df) %>%
-  rename_with(function(x){gsub(".fitted","",x)}) %>%
+  rename_with(function(x){gsub("[.]","",x)}) %>%
   ggplot(aes(x = Potability, y = PC2, color=Potability))+
   geom_boxplot(outlier.shape = NA)+
+  scale_color_manual(values = c("0" = "#ec7d15", "1" = "#10b9ec")) +
+
   geom_point(position=position_jitterdodge())+
   labs(y = paste0("PC2: ",round(variance_exp[2]*100), "%"))+
   theme(legend.position = "top")
-
 # Los boxplots de la primera y de la segunda componente son muy similares
 ```
 
+Notemos que ambas gráficas son similares los que nos indica que probablemente la diferencia en varianza explicada no es tan grande. Esto puede sugerir que ambas componentes son relevantes para entender la estructura del conjunto de datos. Pero como ya vimos anteriormente, esto ocurre también con las otras variables.
 
-```{r}
-autoplot(pca_fit, data = df) +
-geom_point(alpha = 0.4, size = 2, colour="#e319dc") +
-ggtitle("PCA:")
-theme_minimal()
-```
-
-
-```{r}
-# No corre
-pca_fit %>%
- augment(df) %>%
-  mutate(terms = tidytext::reorder_within(terms, 
-                                          abs(value), 
-                                         .fittedPC1)) %>%
-  ggplot(aes(abs(value), terms, fill = value > 0)) +
-  geom_col() +
-  facet_wrap(~.fittedPC1, scales = "free_y") +
-  tidytext::scale_y_reordered() +
-  scale_fill_manual(values = c("#b6dfe2", "#0A537D")) +
-  labs(
-    x = "Absolute value of contribution",
-    y = NULL, fill = "Positive?"
-  ) 
-
-```
-
-###Otra forma
-```{r}
+```{r message=FALSE, warning=FALSE, include=FALSE}
 wdbc_recipe <-
   recipe(~., data = df) %>% 
   update_role(Potability, new_role = "id") %>% 
@@ -452,196 +341,79 @@ wdbc_recipe <-
   prep()
 ```
 
-```{r}
+Obtenemos la carga de cada variable en el componente principal correspondiente.
+```{r message=FALSE, warning=FALSE, include=FALSE}
 wdbc_pca <- 
   wdbc_recipe %>% 
   tidy(id = "pca") 
-
-wdbc_pca
 ```
 
-```{r}
-wdbc_recipe %>% 
-  tidy(id = "pca", type = "variance") %>% 
-  dplyr::filter(terms == "percent variance") %>% 
-  ggplot(aes(x = component, y = value)) + 
-  geom_col(fill = "#B53389") + 
-  xlim(c(0, 30)) + 
-  labs(x="PC", y="% de varianza", title="Scree plot")
+**Veremos la contribución de cada variable a los componentes principales:**
+Nota: Azul oscuro para contribución positiva y azul claro para contribución negativa.
 
-```
-
-```{r}
-wdbc_recipe %>% 
-  tidy(id = "pca", type = "variance") %>% 
-  dplyr::filter(terms == "cumulative percent variance") %>% 
-  ggplot(aes(x = component, y = value)) + 
-  geom_col(fill = "#F25E52") + 
-  xlim(c(0, 30)) + 
-  labs(x="PC", y="% acumulado de varianza", title="Scree plot")
-```
-
-```{r}
+```{r message=FALSE, warning=FALSE, echo=FALSE}
 wdbc_pca %>%
   mutate(terms = tidytext::reorder_within(terms, 
                                           abs(value), 
                                           component)) %>%
-  ggplot(aes(abs(value), terms, fill = value > 0)) +
+  ggplot(aes(abs(value), terms, fill = factor(value > 0, levels = c(FALSE, TRUE), labels = c("Negativa", "Positiva")))) +
   geom_col() +
   facet_wrap(~component, scales = "free_y") +
   tidytext::scale_y_reordered() +
   scale_fill_manual(values = c("#b6dfe2", "#0A537D")) +
   labs(
     x = "Absolute value of contribution",
-    y = NULL, fill = "¿Positive?"
+    y = NULL, fill = "Contribución"
   ) 
 ```
 
-```{r}
-wdbc_pca %>%
-  filter(component %in% paste0("PC", 1:6)) %>%
-  mutate(component = fct_inorder(component)) %>%
-  ggplot(aes(value, terms, fill = terms)) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~component, nrow = 1) +
-  labs(y = NULL)
+```{r message=FALSE, warning=FALSE, results="hide", include=FALSE}
+res.pca <- PCA(df[, 1:9],  scale.unit=TRUE) 
 ```
 
-```{r}
-wdbc_pca %>%
-  filter(component %in% paste0("PC", 1:6)) %>%
-  group_by(component) %>%
-  top_n(8, abs(value)) %>%
-  ungroup() %>%
-  mutate(terms = reorder_within(terms, abs(value), component)) %>%
-  ggplot(aes(abs(value), terms, fill = value > 0)) +
-  geom_col() +
-  facet_wrap(~component, scales = "free_y") +
-  scale_y_reordered() +
-  labs(
-    x = "Absolute value of contribution",
-    y = NULL, fill = "¿Positive?"
-  )
-```
-
-```{r}
-juice(wdbc_recipe) %>%
-  ggplot(aes(PC1, PC2, label = Potability)) +
-  geom_point(aes(color = Potability), alpha = 0.7, size = 2) +
-  geom_text(check_overlap = TRUE, hjust = "inward", family = "IBMPlexSans") +
-  labs(color = NULL)
-```
-
-
-###3D
-
-# Adicionando los resultados de PCA a la base de datos
-```{r}
-df1 <- cbind(df, pca_fit$x)
-head(df1)
-
-mycolors <- rainbow(2)
-#df1$color <- mycolors[as.numeric(df1$Potability)]
-df1$color <- ifelse(df$Potability == 1, "#FF0000", "#0000FF")
-
-plot3d( 
-  x=df1$PC1, y=df1$PC2, z=df1$PC3, 
-  col = df1$color, 
-  type = 's', 
-  radius = .1,
-  xlab="PC1", ylab="PC2", zlab="PC3")
-
-g.df1 <- plot_ly(df1, x = ~PC1, y = ~PC2, z = ~PC3, color = ~Potability, colors =c("#0000FF", "#FF00FF") )
-g.df1 <- g.df1 %>% add_markers()
-g.df1 <- g.df1 %>% layout(scene = list(xaxis = list(title = 'PC1'),
-                     yaxis = list(title = 'PC2'),
-                     zaxis = list(title = 'PC3')))
-
-g.df1
-
-```
-
-
-PENDIENTE
-
-library(plotly)
-
-df1$diagnosis[which(df1$diagnosis == "B" )] <- "B"
-df1$diagnosis[which(df1$diagnosis == "M" )] <- "M"
-df1$diagnosis <- as.factor(df1$diagnosis)
-
-fig <- plot_ly(df1, x = ~PC1, y = ~PC2, z = ~PC3, color = ~diagnosis, colors = c('#BF382A', '#0C4B8E'))
-fig <- fig %>% add_markers()
-fig <- fig %>% layout(scene = list(xaxis = list(title = 'PC1'),
-                     yaxis = list(title = 'PC2'),
-                     zaxis = list(title = 'PC3')))
-
-fig
-
-###EXTRAS
-
-ggpairs(df1, mapping = aes(color = diagnosis),columns = seq(32,36))
-
-# get pca loadings into wider format
-
-pca_wider <- wdbc_pca %>% 
-  tidyr::pivot_wider(names_from = component, id_cols = terms)
-
-# define arrow style
-arrow_style <- arrow(length = unit(0.001, "inches"),
-                     type = "closed")
-
-
-pca_plot <-
-  juice(wdbc_recipe) %>%
-  ggplot(aes(PC1, PC2)) +
-  geom_point(aes(color = diagnosis), 
-             alpha = 0.8, 
-             size = 1) +
-  scale_colour_manual(values = c("darkorange","purple")) 
-
-pca_plot
-
-pca_plot +
-  geom_segment(data = pca_wider,
-               aes(xend = PC1, yend = PC2), 
-               x = 0, 
-               y = 0, 
-               arrow = arrow_style) + 
-  geom_text(data = pca_wider,
-            aes(x = PC1, y = PC2, label = terms), 
-            hjust = 0, 
-            vjust = 1,
-            size = 3, 
-            color = '#0A537D') 
-
-res.pca = PCA(df[,-1],  scale.unit=TRUE) 
-
+```{r message=FALSE, warning=FALSE, echo=FALSE}
 fviz_pca_var(res.pca,
              alpha.var = "contrib",
              col.var = "contrib", 
              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
              title = 'Influencia de las variables en PCA1 y PCA2',
              repel = TRUE)
+```
 
-fviz_pca_ind(res.pca,
-             col.ind = "contrib", 
-             
-             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
-             title='Distribución de los individuos en PCA1 y PCA2',
-             repel = TRUE)
 
-fviz_pca_biplot(res.pca, repel = TRUE,
-                title='Biplot',
-                col.var = "#2E9FDF",
-                col.ind = "#696969")
+<!-- Ahora realizaremos un gráfico 3D con los primeros tres Componentes Principales. -->
+```{r message=FALSE, warning=FALSE, echo =FALSE}
+df1 <- cbind(df, pca_fit$x)
+# head(df1)
 
-ggord(res.pca, df$diagnosis)
+# g.df1 <- plot_ly(df1, x = ~PC1, y = ~PC2, z = ~PC3, color = ~Potability, colors =c("0" = "#ec7d15", "1" = "#10b9ec"), 
+# marker = list(size = 5))
+# g.df1 <- g.df1 %>% add_markers()
+# g.df1 <- g.df1 %>% layout(scene = list(xaxis = list(title = 'PC1'),
+#                      yaxis = list(title = 'PC2'),
+#                      zaxis = list(title = 'PC3')))
 
-fviz_pca_biplot(res.pca, repel = TRUE,
-                col.var = "blue", 
-                col.ind = df$diagnosis, 
-                palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-                addEllipses = TRUE, ellipse.level = 0.95)
-###Prediccion
+# g.df1
+```
+
+<!-- Notemos que la mayoria de los puntos están concentrados en el centro. Por lo que podemos concluir que nuevamente no logró hacer una separación clara. -->
+
+<!-- ```{r message=FALSE, warning=FALSE}
+
+fig <- plot_ly(df1, x = ~PC1, y = ~PC2, z = ~PC3, color = ~Potability, colors = c('#BF382A', '#0C4B8E'))
+fig <- fig %>% add_markers()
+fig <- fig %>% layout(scene = list(xaxis = list(title = 'PC1'),
+                     yaxis = list(title = 'PC2'),
+                     zaxis = list(title = 'PC3')))
+fig
+``` -->
+
+### Conclusión PCA
+Con este método no es posible reducir la dimensión de los datos por la baja correlación entre las variables, necesaria para aplicar PCA, y en consecuencia el alta varianza explicada por cada uno de los 9 componentes, lo que indica que no es factible reducir las dimensiones.
+
+## **tSNE**
+
+
+
+## **UMAP**
 
