@@ -1,8 +1,5 @@
 ---
-title: 'Tarea 1: Módulo VI APRENDIZAJE NO SUPERVISADO'
-output:
-  html_document:
-    df_print: paged
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -67,6 +64,20 @@ library(factoextra)
 library(ggord)
 library(mice)
 library(ggfortify)
+
+library(modeldata)
+# library(embed)
+library(tsne)
+library(uwot)
+library(scattermore)
+library(readr)
+library(Rtsne)
+library(gganimate)
+library(data.table)
+
+library(baguette)
+library(discrim)
+
 theme_set(theme_bw(16))
 ```
 
@@ -414,6 +425,234 @@ Con este método no es posible reducir la dimensión de los datos por la baja co
 ## **tSNE**
 
 
+A continuación vamos a hacer uso del algoritmo t-SNE ya que, como vimos en el método de PCA, con el paquete `Rtsne`.
+```{r, message=FALSE, warning=FALSE}
+set.seed(123)
+
+df_Rtsne <- df %>%
+  dplyr::select(where(is.numeric)) %>%
+  scale() %>%
+  Rtsne()
+```
+
+**Agregando los resultados de  t-SNE a la base:**
+
+```{r, warning=FALSE, message=FALSE}
+datos1<-data.frame(Rtsne1=df_Rtsne$Y[,1],Rtsne2=df_Rtsne$Y[,2],Potability=df$Potability)
+```
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+ggplot(datos1,aes(x=Rtsne1,y=Rtsne2,color=Potability))+
+  geom_point(size=1.5) +
+  scale_color_manual(values = c("0" = "#ec7d15", "1" = "#10b9ec")) +
+  labs(title="Potabilidad: Rtsne")
+
+```
+Podemos observar que aplicando Rtsne no se ve una separación de los grupos.
+
+Veamos ahora aplicando la misma función pero modificando hiperparámetros: perplexity y la tasa de aprendizaje.
+* perplexity: Con los valores de 10, 15, 20, 25 30,
+* Tasa de aprendizaje: con los valores de 10, 50, 100, 150.
+
+```{r, message=FALSE, warning=FALSE, results = "hide"} 
+set.seed(123)
+Rtsne_params2 = expand.grid(perplexity=c(10,15,20,25,30), eta = c(10, 50, 100, 150))
+
+Rtsne_res2 = lapply(seq(nrow(Rtsne_params2)), function(i) {
+  print(i)
+  Rres = Rtsne(
+    X = df[,-1],
+    max_iter = 500,
+    verbose=TRUE,
+    perplexity = Rtsne_params2$perplexity[i],
+    check_duplicates = FALSE,
+    eta = Rtsne_params2$eta[i],
+    pca = F
+  )
+  return(Rres)
+})
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+
+d3 = rbindlist(lapply(seq(nrow(Rtsne_params2)), function(i) {
+  data.table(
+    x = Rtsne_res2[[i]]$Y[,1],
+    y = Rtsne_res2[[i]]$Y[,2],
+    perplexity = Rtsne_params2[[1]][i],
+    eta = Rtsne_params2[[2]][i],
+    Potability = df$Potability
+  )
+}))
+
+p3<-ggplot(d3) +
+  geom_scattermore(
+    mapping = aes(x = x, y = y ,colour=Potability),
+    pointsize = 2
+  ) +
+  scale_colour_manual(values = c("0" = "#ec7d15", "1" = "#10b9ec")) +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    legend.position = "none"
+  ) +
+  facet_wrap(eta~perplexity ,
+             labeller = label_both,
+             scales = "free",
+             ncol = 5) +
+  labs(title = "t-SNE con distinta Perplexities y tasa de aprendizaje", x = "Rtsne1", y = "Rtsne2") +
+  theme_bw() 
+p3
+```
+
+**El gif con la animación se incluye en la carpeta de envío.**
+
+```{r, message=FALSE, warning=FALSE, include =FALSE}
+colores = c("0" = "#ec7d15","1" = '#10b9ec')
+# names(colores) = c("0","1")
+
+anim_plot1<-d3 %>% 
+  filter(perplexity == 10 | perplexity == 15 | perplexity == 20 | perplexity == 25 | perplexity == 30) %>% 
+  mutate(parametros = factor(paste('perplexity:', perplexity, 'eta:', eta))) %>% ggplot() +
+  geom_scattermore(
+    mapping = aes(x = x, y = y, col = Potability),
+    pointsize = 2
+  ) +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    legend.position = "none"
+  ) +
+  theme_bw()+
+  labs(title = 'Verificación de los parámetros')+
+  scale_color_manual(values = colores) + 
+  transition_states(parametros, transition_length = 2, state_length = 3) +
+  labs(title = '{closest_state}')
+
+# animate(anim_plot1, nframes = 300)
+# anim_save("gifTsne1.gif")
+```
+
+### Conclusión t-SNE
+En los distintos casos de hiperparámetros podemos observar que con este método de reducción de dimensiones tampoco fue posible separar reducir la dimensión de los datos ni separar los grupos de potabilidad.
 
 ## **UMAP**
 
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+tidymodels_prefer()
+```
+
+
+```{r, message=FALSE, warning=FALSE, results = "hide"}
+# UMAP sin valores de los hiper-parametros
+df_umap <- df %>%
+  dplyr::select(where(is.numeric)) %>%
+  scale() %>%
+  umap()
+```
+
+```{r, message=FALSE, warning=FALSE, echo = FALSE}
+#Base de datos
+datos<-data.frame(UMAP1=df_umap[,1],UMAP2=df_umap[,2],Potability=df$Potability)
+
+ggplot(datos, aes(x = UMAP1, y = UMAP2, color = Potability)) +
+  geom_point(size = 2) +
+    scale_color_manual(values = c("0" = "#ec7d15", "1" = "#10b9ec")) +
+  labs(title="Potabilidad: UMAP")
+```
+
+Argumentos de esta función:
+
+* n_neighbors
+* n_components
+* metric
+* n_epochs
+* learning_rate
+
+### UMAP: Exploracion de hiperparámetros
+
+```{r, message=FALSE, warning=FALSE, results = "hide"}
+umap_params1 = expand.grid(n_neighbors = c(10, 20, 50, 100, 150, 200),min_dist = c(0.5, 0.75, 1.1))
+
+umaps = lapply(seq(nrow(umap_params1)), function(i) {
+    emb = umap(
+      X = df[,-1],
+      n_neighbors = umap_params1$n_neighbors[i],
+      min_dist  = umap_params1$min_dist[i])
+
+  return(emb)
+})
+```
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+d1 = rbindlist(lapply(seq(nrow(umap_params1)), function(i) {
+  data.table(
+    x = umaps[[i]][,1],
+    y = umaps[[i]][,2],
+    n_neighbors = umap_params1$n_neighbors[i],
+    min_dist = umap_params1$min_dist[i],
+    Potability = as.factor(df$Potability)
+  )
+}))
+```
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+p1<-ggplot(d1) +
+  geom_scattermore(
+    mapping = aes(x = x, y = y,,colour=Potability),
+    pointsize = 2
+  ) +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    legend.position = "none"
+  ) +
+  facet_wrap(min_dist ~ n_neighbors ,
+             labeller = label_both,
+             scales = "free") +
+  theme_bw() +
+  labs(title = "WDBC: UMAP")
+
+p1
+```
+
+**Los gifs con las animaciones se incluyen en la carpeta de envío.**
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+colores = c("0" = "#ec7d15","1" = '#10b9ec')
+
+anim_plot1<-d1 %>% 
+  filter(n_neighbors == 10 | n_neighbors == 20 | n_neighbors == 50 | n_neighbors == 100 | n_neighbors == 150 | n_neighbors == 200) %>% 
+  mutate(parametros = factor(paste('n_neighbors:', n_neighbors, 'min_dist:', min_dist))) %>% ggplot() +
+  geom_scattermore(
+    mapping = aes(x = x, y = y, col = Potability),
+    pointsize = 2
+  ) +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    legend.position = "none"
+  ) +
+  theme_bw()+
+  labs(title = 'Verificación de los parámetros')+
+  scale_color_manual(values = colores) + 
+  transition_states(parametros, transition_length = 2, state_length = 3) +
+  labs(title = '{closest_state}')
+
+# animate(anim_plot1, nframes = 300)
+# anim_save("gifUMAP1.gif")
+```
+
+
+### Conclusión UMAP
+
+En los distintos casos de hiperparámetros podemos observar que con este método de reducción de dimensiones tampoco fue posible separar reducir la dimensión de los datos ni separar los grupos de potabilidad.
+
+## Conclusión.
+
+En los tres métodos presentados no fue posible reducir la dimensión de los datos. Esto se puede deber a la baja correlación de las distintas variables. Esto podría ser un indicio de independencia de las variables, mostrando que cada variable aporta algo distinto e igualmente importante a la clasificación en la potabilidad.
