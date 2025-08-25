@@ -1,8 +1,6 @@
 ---
 title: 'Tarea 1: Módulo VI APRENDIZAJE NO SUPERVISADO'
-output:
-  html_document:
-    df_print: paged
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -74,7 +72,8 @@ Cargamos nuestra base de datos.
 
 ```{r message=FALSE, warning=FALSE}
 # Cargamos la base de datos
-df<-read.csv("water_potability.csv") 
+df<-read.csv("water_potability.csv")
+df$Potability <- as.factor(df$Potability)
 ```
 
 Veamos la dimensión de nuestra base, la cual tiene 3276 registros y 10 columnas.
@@ -176,7 +175,7 @@ df_long %>%
 ```
 
 **Histogramas:**
-```{r, echo =FALSE, message = FALSE, warning=FALSE}
+```{r, echo =FALSE, message = FALSE, warning=FALSE, fig.width = 9, fig.height=4}
 df_long |> ggplot(mapping = aes(values, fill = Potability)) +
   geom_histogram(color = "white", alpha = 0.4) +
   theme_light() +
@@ -188,7 +187,7 @@ df_long |> ggplot(mapping = aes(values, fill = Potability)) +
 ```
 
 **Densidades:**
-```{r, warning=FALSE, message=FALSE, echo =FALSE}
+```{r, warning=FALSE, message=FALSE, echo =FALSE, fig.width = 8, fig.height=4}
 df_long |> ggplot(mapping = aes(values, fill = Potability)) +
   geom_density(color = "white", alpha = 0.4) +
   theme_light() +
@@ -199,14 +198,14 @@ df_long |> ggplot(mapping = aes(values, fill = Potability)) +
 ```
 
 **Gráficos de dispersión:**
-```{r message=FALSE, warning=FALSE, echo = FALSE}
+```{r message=FALSE, warning=FALSE, echo = FALSE, fig.width = 10, fig.height=5}
 ggpairs(df, mapping = aes(color = Potability, alpha = 0.5),columns = seq(1,9), upper = "blank", diag = "blank") +
 scale_colour_manual(values = c("0" = "#ec7d15", "1" = "#10b9ec")) + labs(title = "Comparación por gráficos de dispersión")
 ```
 
 Veamos la estructura de correlación de Spearman que tienen nuestras variables.
 
-```{r message=FALSE, warning=FALSE, echo=FALSE}
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width = 8, fig.height=4}
 cor1_data<-cor(df[,-10],method="spearman")
 
 ggcorrplot::ggcorrplot(corr = cor1_data,
@@ -253,7 +252,7 @@ pca_fit %>%
 
 Veamos una gráfica de codo la cual nos muestra como va bajando la varianza explicada por cada una de las Componentes Principales.
 
-```{r message=FALSE, warning=FALSE, echo=FALSE}
+```{r message=FALSE, warning=FALSE, echo=FALSE, , fig.width = 9, fig.height=4}
 pca_fit %>%
   tidy("pcs") %>%
   ggplot(aes(x=term, y=prop.variance, group = 1)) +
@@ -269,7 +268,7 @@ pca_fit %>%
 Cada una de las componentes tiene casi la misma varianza por lo que podemos intuir que no será posible graficar en R3 ni en R2 ya que **si solo nos quedamos con 2 o 3 Componentes Principales perderemos mucha varianza de las demás componentes**.
 
 Veamos una gráfica ahora de la Varianza acumulativa.
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, fig.width = 9, fig.height=4}
 pca_fit %>%
   tidy("pcs") %>%
   ggplot(aes(x=term, y= cum.prop.variance, group = 1))+
@@ -290,7 +289,7 @@ variance_exp <- pca_fit %>%
 Vamos a realizar una gráfica con los dos primeros componentes.
 
 Vamos a hacer uso de nuestra variable *Potability*.
-```{r message=FALSE, warning=FALSE, echo=FALSE}
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width = 9, fig.height=4}
 pca_fit %>%
   augment(df) %>%
   rename_with(function(x){gsub("[.]","",x)}) %>%
@@ -305,7 +304,7 @@ pca_fit %>%
 Podemos ver que no nos separan bien los datos en los grupos que tenemos de potabilidad.
 
 Gráfica de Boxplot de la variable *Potability* con el primer componente principal.
-```{r message=FALSE, warning=FALSE, echo=FALSE}
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width = 9, fig.height=4}
 pca_fit %>%
   augment(df) %>%
   rename_with(function(x){gsub("[.]","",x)}) %>%
@@ -318,7 +317,7 @@ pca_fit %>%
 ```
 
 Gráfica de Boxplot de la variable *Potability* con el segundo componente principal.
-```{r message=FALSE, warning=FALSE, echo=FALSE}
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width = 9, fig.height=4}
 pca_fit %>%
   augment(df) %>%
   rename_with(function(x){gsub("[.]","",x)}) %>%
@@ -353,7 +352,7 @@ wdbc_pca <-
 **Veremos la contribución de cada variable a los componentes principales:**
 Nota: Azul oscuro para contribución positiva y azul claro para contribución negativa.
 
-```{r message=FALSE, warning=FALSE, echo=FALSE}
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width = 9, fig.height=4}
 wdbc_pca %>%
   mutate(terms = tidytext::reorder_within(terms, 
                                           abs(value), 
@@ -373,7 +372,7 @@ wdbc_pca %>%
 res.pca <- PCA(df[, 1:9],  scale.unit=TRUE) 
 ```
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, fig.width = 9, fig.height=4}
 fviz_pca_var(res.pca,
              alpha.var = "contrib",
              col.var = "contrib", 
@@ -384,18 +383,18 @@ fviz_pca_var(res.pca,
 
 
 Ahora realizaremos un gráfico 3D con los primeros tres Componentes Principales.
-```{r message=FALSE, warning=FALSE, echo =FALSE}
-df1 <- cbind(df, pca_fit$x)
-head(df1)
+```{r message=FALSE, warning=FALSE, echo =FALSE,fig.width = 9, fig.height=4}
+# df1 <- cbind(df, pca_fit$x)
+# head(df1)
 
-g.df1 <- plot_ly(df1, x = ~PC1, y = ~PC2, z = ~PC3, color = ~Potability, colors =c("0" = "#ec7d15", "1" = "#10b9ec"), 
-marker = list(size = 5))
-g.df1 <- g.df1 %>% add_markers()
-g.df1 <- g.df1 %>% layout(scene = list(xaxis = list(title = 'PC1'),
-                     yaxis = list(title = 'PC2'),
-                     zaxis = list(title = 'PC3')))
+# g.df1 <- plot_ly(df1, x = ~PC1, y = ~PC2, z = ~PC3, color = ~Potability, colors =c("0" = "#ec7d15", "1" = "#10b9ec"), 
+# marker = list(size = 5))
+# g.df1 <- g.df1 %>% add_markers()
+# g.df1 <- g.df1 %>% layout(scene = list(xaxis = list(title = 'PC1'),
+#                      yaxis = list(title = 'PC2'),
+#                      zaxis = list(title = 'PC3')))
 
-g.df1
+# g.df1
 
 ```
 
@@ -405,12 +404,12 @@ Probemos con los siguientes métodos.
 
 ```{r message=FALSE, warning=FALSE}
 
-fig <- plot_ly(df1, x = ~PC1, y = ~PC2, z = ~PC3, color = ~Potability, colors = c('#BF382A', '#0C4B8E'))
-fig <- fig %>% add_markers()
-fig <- fig %>% layout(scene = list(xaxis = list(title = 'PC1'),
-                     yaxis = list(title = 'PC2'),
-                     zaxis = list(title = 'PC3')))
-fig
+# fig <- plot_ly(df1, x = ~PC1, y = ~PC2, z = ~PC3, color = ~Potability, colors = c('#BF382A', '#0C4B8E'))
+# fig <- fig %>% add_markers()
+# fig <- fig %>% layout(scene = list(xaxis = list(title = 'PC1'),
+#                      yaxis = list(title = 'PC2'),
+#                      zaxis = list(title = 'PC3')))
+# fig
 ```
 
 
